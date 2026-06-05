@@ -1,0 +1,7 @@
+# Large binary reference data is tracked with Git LFS.
+sncosmo/models/** filter=lfs diff=lfs merge=lfs -text
+dustmaps/** filter=lfs diff=lfs merge=lfs -text
+
+# Small ASCII transmission curves and reference spectra stay in normal git so
+# they remain diff-able and a bandpasses-only consumer needs no LFS download.
+# (sncosmo/bandpasses/ and sncosmo/spectra/ are intentionally NOT in LFS.)

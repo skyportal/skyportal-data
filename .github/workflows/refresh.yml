@@ -1,0 +1,59 @@
+name: Refresh reference data
+
+# Filter curves / dust maps are effectively static, so this is a low-frequency
+# backstop. Run it on demand (or after a sncosmo bump) via "Run workflow".
+on:
+  workflow_dispatch:
+    inputs:
+      include_models:
+        description: "Refresh sncosmo SED model templates too (large)"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "17 4 * * 1" # Mondays 04:17 UTC
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install fetch dependencies
+        run: pip install sncosmo dustmaps astropy
+
+      - name: Refresh data
+        run: |
+          if [ "${{ inputs.include_models }}" = "false" ]; then
+            python tools/refresh.py --no-models
+          else
+            python tools/refresh.py
+          fi
+
+      - name: Open PR if data changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No data changes; nothing to do."
+            exit 0
+          fi
+          branch="refresh/data-${{ github.run_id }}"
+          git checkout -b "$branch"
+          git commit -m "Refresh vendored reference data"
+          git push origin "$branch"
+          gh pr create --fill \
+            --title "Refresh vendored reference data" \
+            --body "Automated refresh from \`tools/refresh.py\`. Review the changed data files before merging."
