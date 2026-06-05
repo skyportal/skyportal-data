@@ -1,7 +1,8 @@
-# Large binary reference data is tracked with Git LFS.
-sncosmo/models/** filter=lfs diff=lfs merge=lfs -text
-dustmaps/** filter=lfs diff=lfs merge=lfs -text
-
-# Small ASCII transmission curves and reference spectra stay in normal git so
-# they remain diff-able and a bandpasses-only consumer needs no LFS download.
-# (sncosmo/bandpasses/ and sncosmo/spectra/ are intentionally NOT in LFS.)
+# Large binary reference data (the SFD dust maps and sncosmo SED models) is
+# stored as raw git blobs rather than Git LFS. The shared LFS bandwidth budget
+# was exhausted, which blocked submodule checkouts in CI; every file here is
+# under GitHub's 100 MB per-file limit, so plain git works. The trade-off is a
+# larger clone.
+#
+# sncosmo/bandpasses/ and sncosmo/spectra/ are small ASCII transmission curves
+# and reference spectra that also stay in normal git so they remain diff-able.

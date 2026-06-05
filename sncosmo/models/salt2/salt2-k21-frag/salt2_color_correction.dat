@@ -1,3 +1,8 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c13294911bfacff239ad36cc80521223873bab2877cb8a08b60ae6c0009d239b
-size 140
+4
+-0.402687
+0.700296
+-0.431342
+0.0779681
+Salt2ExtinctionLaw.version 1
+Salt2ExtinctionLaw.min_lambda 2800
+Salt2ExtinctionLaw.max_lambda 7000
