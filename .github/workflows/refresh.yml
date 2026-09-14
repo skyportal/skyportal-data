@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       include_models:
-        description: "Refresh sncosmo SED model templates too (large, and pulls the families the README leaves out)"
+        description: "Refresh sncosmo SED model templates too (large; see the README)"
         type: boolean
         default: false
   schedule:
@@ -29,13 +29,11 @@ jobs:
       - name: Install fetch dependencies
         run: pip install sncosmo dustmaps astropy
 
-      # Scheduled runs skip the SED templates: they are not loaded at consumer
-      # import time, and refetching them re-proposes the large families this
-      # repo deliberately omits.
       - name: Refresh data
         id: refresh
         run: |
           status=0
+          # A schedule event leaves include_models empty, hence testing for "true".
           if [ "${{ inputs.include_models }}" = "true" ]; then
             python tools/refresh.py || status=$?
           else
@@ -58,8 +56,6 @@ jobs:
             echo "No data changes; nothing to do."
             exit 0
           fi
-          # One long-lived branch, force-pushed: a per-run branch reopens an
-          # identical PR every week for as long as the first one sits unmerged.
           branch="refresh/data"
           git checkout -b "$branch"
           git commit -m "Refresh vendored reference data"
@@ -72,8 +68,7 @@ jobs:
             --title "Refresh vendored reference data" \
             --body "Automated refresh from \`tools/refresh.py\`. Review the changed data files before merging."
 
-      # Deliberately after the PR step, so a missing curve still surfaces
-      # whatever else was fetched instead of dropping the whole run.
+      # After the PR step, so a missing curve still ships whatever was fetched.
       - name: Fail if bandpasses are still missing
         if: steps.refresh.outputs.missing_bandpasses == '1'
         run: |

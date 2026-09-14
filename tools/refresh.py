@@ -108,9 +108,7 @@ def main() -> None:
     if not args.no_dust:
         refresh_dustmaps(args.attempts)
 
-    # Consumers load every bandpass at import time, so a gap here is a runtime
-    # fetch against a host this repo exists to avoid. Exit 2 (not 1) to let the
-    # caller tell a missing curve apart from a crash, and to open the PR anyway.
+    # Exit 2, not 1: the workflow tells a missing curve apart from a crash.
     if missing:
         print(
             f"{len(missing)} bandpass(es) still missing: {', '.join(sorted(missing))}",
