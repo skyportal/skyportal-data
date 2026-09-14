@@ -40,7 +40,7 @@ def _warm(fetch, names: list[str], kind: str) -> list[str]:
     return failed
 
 
-def _warm_with_retries(fetch, names: list[str], kind: str, attempts: int) -> None:
+def _warm_with_retries(fetch, names: list[str], kind: str, attempts: int) -> list[str]:
     failed = list(names)
     for i in range(1, attempts + 1):
         if not failed:
@@ -49,9 +49,11 @@ def _warm_with_retries(fetch, names: list[str], kind: str, attempts: int) -> Non
         failed = _warm(fetch, failed, kind)
     cached = len(names) - len(failed)
     print(f"{kind}: {cached}/{len(names)} cached, {len(failed)} skipped")
+    return failed
 
 
-def refresh_sncosmo(attempts: int, include_models: bool) -> None:
+def refresh_sncosmo(attempts: int, include_models: bool) -> list[str]:
+    """Warm the sncosmo cache; return the bandpasses that could not be fetched."""
     import sncosmo
     from sncosmo.bandpasses import _BANDPASSES
 
@@ -60,13 +62,15 @@ def refresh_sncosmo(attempts: int, include_models: bool) -> None:
     sncosmo.conf.data_dir = str(SNCOSMO_DIR)
 
     bandpasses = [m["name"] for m in _BANDPASSES.get_loaders_metadata() if m.get("name")]
-    _warm_with_retries(sncosmo.get_bandpass, bandpasses, "bandpass", attempts)
+    missing = _warm_with_retries(sncosmo.get_bandpass, bandpasses, "bandpass", attempts)
 
     if include_models:
         from sncosmo.models import _SOURCES
 
         sources = [m["name"] for m in _SOURCES.get_loaders_metadata() if m.get("name")]
         _warm_with_retries(sncosmo.get_source, sources, "model", attempts)
+
+    return missing
 
 
 def refresh_dustmaps(attempts: int) -> None:
@@ -100,9 +104,19 @@ def main() -> None:
     p.add_argument("--attempts", type=int, default=DEFAULT_ATTEMPTS)
     args = p.parse_args()
 
-    refresh_sncosmo(args.attempts, include_models=not args.no_models)
+    missing = refresh_sncosmo(args.attempts, include_models=not args.no_models)
     if not args.no_dust:
         refresh_dustmaps(args.attempts)
+
+    # Consumers load every bandpass at import time, so a gap here is a runtime
+    # fetch against a host this repo exists to avoid. Exit 2 (not 1) to let the
+    # caller tell a missing curve apart from a crash, and to open the PR anyway.
+    if missing:
+        print(
+            f"{len(missing)} bandpass(es) still missing: {', '.join(sorted(missing))}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 
 if __name__ == "__main__":
